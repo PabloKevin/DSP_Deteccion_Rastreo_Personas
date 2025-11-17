@@ -18,9 +18,9 @@ class captura_video:
         self.frame_queue = queue.Queue()
         self.video_queue = queue.Queue()
 
-    def record(self, save_video=False):
+    def record(self, save_video=False, pipe_filtrado=None):
         # Iniciar los hilos
-        reader_thread = threading.Thread(target=self.camera_reader, args=(save_video,))
+        reader_thread = threading.Thread(target=self.camera_reader, args=(save_video,pipe_filtrado,))
         writer_thread = threading.Thread(target=self.video_writer)
 
         reader_thread.start()
@@ -41,7 +41,7 @@ class captura_video:
                             (10, 30),                         # Posición (x, y)
                             cv2.FONT_HERSHEY_SIMPLEX,         # Tipo de fuente
                             1,                                # Escala de la fuente
-                            (0, 255, 0),                      # Color (BGR: Verde)
+                            (255, 255, 255),                      # Color (BGR: Verde)
                             2)                                # Grosor del texto
                 
                 cv2.imshow('Camera', frame)
@@ -75,7 +75,7 @@ class captura_video:
         
 
 
-    def camera_reader(self, save_video):
+    def camera_reader(self, save_video, pipe_filtrado):
         """Lee fotogramas de la cámara tan rápido como sea posible."""
         print("Iniciando hilo de lectura...")
         delayed = 0
@@ -86,8 +86,11 @@ class captura_video:
             if not ret:
                 break
             
+            # Pasa el fotoframa por el pipeline de procesamiento
+            filtered_frame = pipe_filtrado(frame) if pipe_filtrado is not None else frame
+
             # Pone el fotograma en las colas para mostrar y grabar
-            self.frame_queue.put(frame)
+            self.frame_queue.put(filtered_frame)
             if save_video:
                 self.video_queue.put(frame)
 
@@ -119,6 +122,27 @@ class captura_video:
         print("Finalizando hilo de escritura.")
         out.release()
 
+    
+def pipe(frame):
+    """Pipeline de procesamiento de fotogramas."""
+    #start = time.time()
+    # Convierte a escala de grises
+    processed_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+    # Aplica un desenfoque gaussiano
+    #processed_frame = cv2.GaussianBlur(processed_frame, (3, 3), 0)
+    #processed_frame = cv2.blur(processed_frame, (3, 3))
+    #processed_frame = cv2.medianBlur(processed_frame, 3)
+    processed_frame = cv2.bilateralFilter(processed_frame, 5, 30, 50) # Busca reducir ruido cuidando mantener bordes. Calibrado con Canny
+    #processed_frame = cv2.bilateralFilter(processed_frame, 13, 75, 75) # Calibrado con Sobel
+    # Aplica método de detección de bordes
+    processed_frame = cv2.Canny(processed_frame, 35, 60)
+    #sobelx = cv2.Sobel(processed_frame, cv2.CV_64F, 1, 0, ksize=13)
+    #sobely = cv2.Sobel(processed_frame, cv2.CV_64F, 0, 1, ksize=13)
+    #processed_frame = cv2.magnitude(sobelx*0.45, sobely*0.45)
+    #end = time.time()
+    #print(f"Tiempo de procesamiento del frame: {(end - start):.2} segundos")
+    return processed_frame
+
 if __name__ == "__main__":
     captura = captura_video(fps=30.0)
-    captura.record(save_video=False)
+    captura.record(save_video=True, pipe_filtrado=pipe)
