@@ -2,6 +2,8 @@ import cv2
 import time
 import threading
 import queue
+from collections import deque
+import numpy as np
 
 class captura_video:
     def __init__(self, fps=60.0, camera=cv2.VideoCapture(0), video_path="DSP_Deteccion_Rastreo_Personas/videos/"):
@@ -25,18 +27,13 @@ class captura_video:
         if save_video:
             writer_thread.start()
 
+        fps_text = "FPS: 0.00"
+        fps_buffer = deque(maxlen=20)
         while True:
             try:
                 prev_time = time.time()
                 # Intenta obtener un fotograma de la cola de visualización
                 frame = self.frame_queue.get(timeout=1)
-
-                curr_time = time.time()
-                time_diff = curr_time - prev_time
-
-                fps_actual = 1 / time_diff
-                # Formatea el texto (limitando a 2 decimales)
-                fps_text = f"FPS: {fps_actual:.2f}"
 
                 # 3. Muestra el texto de FPS sobre el fotograma
                 cv2.putText(frame, 
@@ -51,6 +48,15 @@ class captura_video:
 
                 if cv2.waitKey(1) == ord('q'):
                     break
+                
+                curr_time = time.time()
+                time_diff = curr_time - prev_time
+
+                fps_actual = 1 / time_diff
+                fps_buffer.append(fps_actual)
+                # Formatea el texto (limitando a 2 decimales)
+                fps_text = f"FPS: {np.mean(fps_buffer):.1f}"
+
             except queue.Empty:
                 # Si no hay fotogramas, significa que el hilo de lectura terminó
                 break
@@ -86,7 +92,8 @@ class captura_video:
                 self.video_queue.put(frame)
 
             # Wait for a short period to control the frame rate
-            pipe_time = time.time() - start
+            end = time.time()
+            pipe_time = end - start
             wait = 1/self.fps - pipe_time if (1/self.fps - pipe_time) > 0 else 0
             delayed += 1 if wait == 0 else 0
             time.sleep(wait)
@@ -113,5 +120,5 @@ class captura_video:
         out.release()
 
 if __name__ == "__main__":
-    captura = captura_video(fps=17.0)
+    captura = captura_video(fps=30.0)
     captura.record(save_video=False)
