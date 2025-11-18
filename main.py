@@ -1,6 +1,6 @@
 from captura_video import captura_video
 from deteccion import Pipelines_ImageProcessing
-from rastreo import TrackerPipeline
+from rastreo import TrackerPipeline, OpticalFlowTracker
 
 def apartado32():
     captura = captura_video(fps=16.0)
@@ -22,9 +22,7 @@ def apartado34():
     pipelines = TrackerPipeline()
     captura.record(save_video=False, pipe_filtrado=pipelines.process)
 
-
-
-def apartado341():
+def apartado340():
     pipe2 = TrackerPipeline()
     pipe1 = Pipelines_ImageProcessing()
     def deteccionRastreo(frame):
@@ -33,6 +31,13 @@ def apartado341():
         return frame
     captura = captura_video(fps=16.0)
     captura.record(save_video=False, pipe_filtrado=deteccionRastreo)
+
+def apartado341():
+    captura = captura_video(fps=16.0)
+    #pipelines = TrackerPipeline()
+    #captura.record(save_video=False, pipe_filtrado=pipelines.OpticalFlowTracker)
+    pipelines = OpticalFlowTracker()
+    captura.record(save_video=False, pipe_filtrado=pipelines.process)
 
 def apartado342():
     captura = captura_video(fps=16.0)
@@ -52,6 +57,8 @@ if __name__ == "__main__":
             apartado332()
         elif apartado == "34":
             apartado34()
+        elif apartado == "340":
+            apartado340()
         elif apartado == "341":
             apartado341()
         elif apartado == "342":
