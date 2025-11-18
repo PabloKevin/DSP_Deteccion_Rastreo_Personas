@@ -122,10 +122,21 @@ class captura_video:
         print("Finalizando hilo de escritura.")
         out.release()
 
+def hex2bgr(hex_color):
+    """Convierte una cadena HEX (#RRGGBB) a una tupla BGR para OpenCV."""
+    # Eliminar el '#' si está presente
+    hex_color = hex_color.lstrip('#')
+    
+    # Convierte de HEX a RGB (en decimal)
+    rgb = tuple(int(hex_color[i:i+2], 16) for i in (0, 2, 4))
+    
+    # Reordena a BGR para OpenCV
+    bgr = (rgb[2], rgb[1], rgb[0])
+    return bgr
     
 def pipeEdges(frame):
     """Pipeline de procesamiento de fotogramas."""
-    #start = time.time()
+    start = time.time()
     # Convierte a escala de grises
     processed_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
     # Aplica un desenfoque gaussiano
@@ -139,51 +150,63 @@ def pipeEdges(frame):
     #sobelx = cv2.Sobel(processed_frame, cv2.CV_64F, 1, 0, ksize=13)
     #sobely = cv2.Sobel(processed_frame, cv2.CV_64F, 0, 1, ksize=13)
     #processed_frame = cv2.magnitude(sobelx*0.45, sobely*0.45)
-    #end = time.time()
-    #print(f"Tiempo de procesamiento del frame: {(end - start):.2} segundos")
+    end = time.time()
+    print(f"Tiempo de procesamiento del frame: {(end - start):.2} segundos")
     return processed_frame
 
 def pipeFacesCV2(frame):
     """Pipeline de procesamiento de fotogramas para detección de rostros usando OpenCV."""
+    start = time.time()
+
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+    gray = cv2.bilateralFilter(gray, 5, 30, 50)
     
-    #start = time.time()
     face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_alt2.xml') #haarcascade_frontalface_default
     faces = face_cascade.detectMultiScale(gray, scaleFactor=1.3, minNeighbors=5, minSize=(30, 30))
 
+    profile = False
     if len(faces) == 0:
+        profile = True
         profile_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_profileface.xml')
         faces = profile_cascade.detectMultiScale(gray, scaleFactor=1.3, minNeighbors=5, minSize=(30, 30))
-
-    #end = time.time()
-    #rint(f"Tiempo de detección de ojos: {(end - start):.4} segundos")
     
     eyes_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_eye.xml')
     eyes = eyes_cascade.detectMultiScale(gray, scaleFactor=1.2, minNeighbors=4, minSize=(30, 30)) 
 
     smile_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_smile.xml')
-    smile = smile_cascade.detectMultiScale(frame, scaleFactor=1.3, minNeighbors=7, minSize=(60, 30), maxSize=(80,40)) 
+    smile = smile_cascade.detectMultiScale(frame, scaleFactor=1.3, minNeighbors=7, minSize=(30, 20), maxSize=(80,40)) 
     
     face_x, face_y, face_w, face_h = 0,0,0,0
     for (x, y, w, h) in faces:
         face_x, face_y, face_w, face_h = x, y, w, h
-        cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
-        cv2.putText(frame, 'face', (x, y-10), cv2.FONT_HERSHEY_SCRIPT_SIMPLEX, 0.9, (0, 255, 0), 1)
+        if profile:
+            color = "#650EE8"
+            cv2.rectangle(frame, (x, y), (x + w, y + h), hex2bgr(color), 2)
+            cv2.putText(frame, 'profile', (x, y-10), cv2.FONT_HERSHEY_SCRIPT_SIMPLEX, 0.9, hex2bgr(color), 1)
+        else:
+            color = "#4E75E8"
+            cv2.rectangle(frame, (x, y), (x + w, y + h), hex2bgr(color), 2)
+            cv2.putText(frame, 'face', (x, y-10), cv2.FONT_HERSHEY_SCRIPT_SIMPLEX, 0.9, hex2bgr(color), 1)
 
     for (x, y, w, h) in eyes:
         if y > face_y and y < face_y+face_h*2/3 and x > face_x and x < face_x+face_w:
-            cv2.putText(frame, 'eye', (x, y-10), cv2.FONT_HERSHEY_SCRIPT_SIMPLEX, 0.9, (0, 255, 0), 1)
+            color = "#C0E80E"
+            cv2.putText(frame, 'eye', (x, y-10), cv2.FONT_HERSHEY_SCRIPT_SIMPLEX, 0.9, hex2bgr(color), 1)
             x = x + w//2
             y = y + h//2
-            cv2.circle(frame, (x, y), w//2, (0, 255, 0), 2)
+            cv2.circle(frame, (x, y), w//2, hex2bgr(color), 2)
             
 
     for (x, y, w, h) in smile:
         # Asegurar que la sonrisa esté dentro de la región segura de la cara y filtrar falsas detecciones
-        if y > face_y+(face_h)*5/8 and y < face_y+face_h*5/6 and x > face_x+face_w*1/6 and x < face_x+face_w*5/6: 
-            cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
-            cv2.putText(frame, 'smile', (x, y-10), cv2.FONT_HERSHEY_SCRIPT_SIMPLEX, 0.9, (0, 255, 0), 1)
+        if y > face_y+(face_h)*5/8 and y < face_y+face_h*5/6 and x > face_x+face_w*1/8 and x < face_x+face_w*7/8: 
+            color = "#AC8D59"
+            cv2.rectangle(frame, (x, y), (x + w, y + h), hex2bgr(color), 2)
+            cv2.putText(frame, 'smile', (x, y-10), cv2.FONT_HERSHEY_SCRIPT_SIMPLEX, 0.9, hex2bgr(color), 1)
             break
+    
+    end = time.time()
+    print(f"Tiempo de ejecución del pipeline: {(end - start):.4} segundos")
 
     return frame
 
