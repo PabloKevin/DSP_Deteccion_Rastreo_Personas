@@ -6,6 +6,8 @@ from collections import deque
 import numpy as np
 from ultralytics import YOLO
 from deteccion import Pipelines_ImageProcessing
+import os
+
 
 def hex2bgr(hex_color): 
     """Convierte una cadena HEX (#RRGGBB) a una tupla BGR para OpenCV."""
@@ -126,7 +128,18 @@ class captura_video:
     def video_writer(self):
         """Toma fotogramas de la cola y los escribe en el disco."""
         print("Iniciando hilo de escritura...")
-        out = cv2.VideoWriter(self.video_path+'output.mp4', self.fourcc, fps=self.fps, frameSize=(self.frame_width, self.frame_height))
+        
+        i=0
+        path = None
+        while True:
+            path = self.video_path+"output"+str(i)+".mp4"
+            if os.path.isdir(path):
+                break
+            else:
+                i+=1
+
+
+        out = cv2.VideoWriter(path, self.fourcc, fps=self.fps, frameSize=(self.frame_width, self.frame_height))
         while True:
             try:
                 # Espera a que haya un fotograma en la cola (con un timeout)

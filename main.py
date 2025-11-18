@@ -17,17 +17,12 @@ def apartado332():
     pipelines = Pipelines_ImageProcessing()
     captura.record(save_video=False, pipe_filtrado=pipelines.faceComponentsYOLO)
 
-def apartado34():
-    captura = captura_video(fps=16.0)
-    pipelines = TrackerPipeline()
-    captura.record(save_video=False, pipe_filtrado=pipelines.process)
-
 def apartado340():
-    pipe2 = TrackerPipeline()
     pipe1 = Pipelines_ImageProcessing()
+    pipe2 = TrackerPipeline()
     def deteccionRastreo(frame):
         frame = pipe1.faceComponentsYOLO(frame)
-        frame = pipe2.process(frame)
+        frame = pipe2.CentroidesTracker(frame)
         return frame
     captura = captura_video(fps=16.0)
     captura.record(save_video=False, pipe_filtrado=deteccionRastreo)
@@ -55,8 +50,6 @@ if __name__ == "__main__":
             apartado331()
         elif apartado == "332":
             apartado332()
-        elif apartado == "34":
-            apartado34()
         elif apartado == "340":
             apartado340()
         elif apartado == "341":

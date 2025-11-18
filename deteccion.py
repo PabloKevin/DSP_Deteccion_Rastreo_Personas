@@ -138,6 +138,8 @@ class Pipelines_ImageProcessing:
                     left_eye = Keypoint(left_eye_coords, "left_eye")
                     right_eye = Keypoint(right_eye_coords, "right_eye")
                     radio = abs(left_eye.x - right_eye.y) // 4
+                    radio = 7 if radio < 7 else radio
+                    radio = 28 if radio > 28 else radio
 
                     color = "#C0E80E"
                     if left_eye.x > 0 and left_eye.y  > 0:

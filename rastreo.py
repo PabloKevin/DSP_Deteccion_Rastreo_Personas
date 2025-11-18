@@ -78,7 +78,7 @@ class TrackerPipeline:
         if object_id in self.id_colors:
             del self.id_colors[object_id] # Limpiar color
 
-    def process(self, frame):
+    def CentroidesTracker(self, frame):
         """
         El método principal del pipeline. Recibe un fotograma,
         realiza la detección y actualiza el rastreo.
@@ -237,95 +237,6 @@ class TrackerPipeline:
 
 
         return frame
-    
-    def OpticalFlowTracker(self, frame):
-        """
-        Tracks people using optical flow (Lucas-Kanade method) after detecting them with CascadeClassifier.
-        """
-        # Parameters for ShiTomasi corner detection
-        feature_params = dict(maxCorners=10, qualityLevel=0.3, minDistance=7, blockSize=7)
-
-        # Parameters for Lucas-Kanade optical flow
-        lk_params = dict(winSize=(15, 15), maxLevel=2,
-                         criteria=(cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_COUNT, 10, 0.03))
-
-        # Load the Haar cascade for full-body detection
-        if not hasattr(self, 'body_cascade'):
-            self.body_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_fullbody.xml')
-
-        # If this is the first frame, initialize tracking points
-        if not hasattr(self, 'old_gray'):
-            self.old_gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-            self.p0 = []  # Points to track
-            self.mask = np.zeros_like(frame)  # Mask for drawing trajectories
-            self.color = {}  # Random colors for each person ID
-
-            # Detect people using the Haar cascade
-            bodies = self.body_cascade.detectMultiScale(self.old_gray, scaleFactor=1.1, minNeighbors=3, minSize=(50, 50))
-
-            for (x, y, w, h) in bodies:
-                roi_gray = self.old_gray[y:y+h, x:x+w]  # Region of interest
-                points = cv2.goodFeaturesToTrack(roi_gray, mask=None, **feature_params)  # Detect points
-                if points is not None:
-                    points[:, 0, 0] += x  # Adjust x-coordinates
-                    points[:, 0, 1] += y  # Adjust y-coordinates
-                    self.p0.extend(points)  # Add points to the list
-                    person_id = len(self.color)  # Assign a unique ID
-                    self.color[person_id] = tuple(np.random.randint(0, 255, 3).tolist())  # Random color
-
-            if len(self.p0) > 0:
-                self.p0 = np.array(self.p0, dtype=np.float32)  # Convert to numpy array
-            else:
-                self.p0 = None  # No points detected
-
-        # Convert the current frame to grayscale
-        frame_gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-
-        # Check if there are points to track
-        if self.p0 is not None and len(self.p0) > 0:
-            # Calculate optical flow
-            p1, st, err = cv2.calcOpticalFlowPyrLK(self.old_gray, frame_gray, self.p0, None, **lk_params)
-
-            # Select good points
-            if p1 is not None:
-                good_new = p1[st == 1]
-                good_old = self.p0[st == 1]
-
-                # Draw the tracks
-                for i, (new, old) in enumerate(zip(good_new, good_old)):
-                    a, b = new.ravel()
-                    c, d = old.ravel()
-                    person_id = i % len(self.color)  # Assign points to a person ID
-                    self.mask = cv2.line(self.mask, (int(a), int(b)), (int(c), int(d)), self.color[person_id], 2)
-                    frame = cv2.circle(frame, (int(a), int(b)), 5, self.color[person_id], -1)
-
-                # Update the previous points and frame
-                self.p0 = good_new.reshape(-1, 1, 2)
-                self.old_gray = frame_gray.copy()
-            else:
-                self.p0 = None  # No good points to track
-        else:
-            # Reinitialize points if no points are being tracked
-            self.old_gray = frame_gray.copy()
-            self.p0 = []  # Reset points
-            bodies = self.body_cascade.detectMultiScale(self.old_gray, scaleFactor=1.1, minNeighbors=3, minSize=(50, 50))
-            for (x, y, w, h) in bodies:
-                roi_gray = self.old_gray[y:y+h, x:x+w]
-                points = cv2.goodFeaturesToTrack(roi_gray, mask=None, **feature_params)
-                if points is not None:
-                    points[:, 0, 0] += x
-                    points[:, 0, 1] += y
-                    self.p0.extend(points)
-                    person_id = len(self.color)
-                    self.color[person_id] = tuple(np.random.randint(0, 255, 3).tolist())
-            if len(self.p0) > 0:
-                self.p0 = np.array(self.p0, dtype=np.float32)
-            else:
-                self.p0 = None
-
-        # Combine the frame and the mask
-        output = cv2.add(frame, self.mask)
-        return output
 
 class OpticalFlowTracker:
     def __init__(self, max_points=100):
