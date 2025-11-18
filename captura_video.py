@@ -150,6 +150,11 @@ def pipeFacesCV2(frame):
     #start = time.time()
     face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_alt2.xml') #haarcascade_frontalface_default
     faces = face_cascade.detectMultiScale(gray, scaleFactor=1.3, minNeighbors=5, minSize=(30, 30))
+
+    if len(faces) == 0:
+        profile_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_profileface.xml')
+        faces = profile_cascade.detectMultiScale(gray, scaleFactor=1.3, minNeighbors=5, minSize=(30, 30))
+
     #end = time.time()
     #rint(f"Tiempo de detección de ojos: {(end - start):.4} segundos")
     
@@ -163,13 +168,21 @@ def pipeFacesCV2(frame):
     for (x, y, w, h) in faces:
         face_x, face_y, face_w, face_h = x, y, w, h
         cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
+        cv2.putText(frame, 'face', (x, y-10), cv2.FONT_HERSHEY_SCRIPT_SIMPLEX, 0.9, (0, 255, 0), 1)
 
-    #for (x, y, w, h) in eyes:
-    #    cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
+    for (x, y, w, h) in eyes:
+        if y > face_y and y < face_y+face_h*2/3 and x > face_x and x < face_x+face_w:
+            cv2.putText(frame, 'eye', (x, y-10), cv2.FONT_HERSHEY_SCRIPT_SIMPLEX, 0.9, (0, 255, 0), 1)
+            x = x + w//2
+            y = y + h//2
+            cv2.circle(frame, (x, y), w//2, (0, 255, 0), 2)
+            
 
     for (x, y, w, h) in smile:
-        if y > face_y+(face_h)*1/2 and y < face_y+face_h*3/4 and x > face_x-face_w*1/2 and x < face_x+face_w*1/2:
+        # Asegurar que la sonrisa esté dentro de la región segura de la cara y filtrar falsas detecciones
+        if y > face_y+(face_h)*5/8 and y < face_y+face_h*5/6 and x > face_x+face_w*1/6 and x < face_x+face_w*5/6: 
             cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
+            cv2.putText(frame, 'smile', (x, y-10), cv2.FONT_HERSHEY_SCRIPT_SIMPLEX, 0.9, (0, 255, 0), 1)
             break
 
     return frame
