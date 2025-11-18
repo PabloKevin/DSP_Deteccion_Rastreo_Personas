@@ -4,6 +4,7 @@ import threading
 import queue
 from collections import deque
 import numpy as np
+from ultralytics import YOLO
 
 
 class captura_video:
@@ -144,6 +145,8 @@ class Pipelines_ImageProcessing:
         self.eyes_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_eye.xml')
         self.smile_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_smile.xml')
 
+        self.pose_model = YOLO('model_weights/yolo11n-pose.pt') 
+
     def edges(self, frame):
         """Pipeline de procesamiento de fotogramas para suvizado y detección de bordes."""
         start = time.time()
@@ -221,9 +224,103 @@ class Pipelines_ImageProcessing:
         #print(f"Tiempo de ejecución del pipeline: {(end - start):.4} segundos")
 
         return frame
+    
+    def faceComponentsYOLO(self, frame):
+        """
+        Pipeline de procesamiento de fotogramas para detección de pose usando YOLO Pose.
+        Extrae y dibuja el ojo izquierdo.
+        """
+        start = time.time()
+
+        # Ejecutar la inferencia de pose. 
+        # 'verbose=False' evita que imprima información en cada frame.
+        results = self.pose_model(frame, verbose=False)
+
+        # Iterar sobre los resultados (normalmente solo hay un 'result')
+        for result in results:
+            
+            # 1. Acceder al objeto de keypoints
+            keypoints = result.keypoints
+
+            # 2. Verificar si se detectó al menos una persona
+            if keypoints and keypoints.shape[0] > 0:
+                
+                # keypoints.xy es un tensor de forma [num_personas, 17_keypoints, 2 (x,y)]
+                # Iteramos sobre cada persona detectada en el frame
+                for person_kps in keypoints.xy:
+                    
+                    # 3. Obtener el keypoint del OJO IZQUIERDO (Índice 1)
+                    # El estándar COCO define: 0=nariz, 1=ojo_izq, 2=ojo_der
+                    nose_coords = person_kps[0]
+                    left_eye_coords = person_kps[1]
+                    right_eye_coords = person_kps[2]
+                    nose = Keypoint(nose_coords, "nose")
+                    left_eye = Keypoint(left_eye_coords, "left_eye")
+                    right_eye = Keypoint(right_eye_coords, "right_eye")
+                    radio = abs(left_eye.x - right_eye.y) // 4
+
+                    color = "#C0E80E"
+                    if left_eye.x > 0 and left_eye.y  > 0:
+                        # (Opcional) Dibujar un círculo sobre el ojo en el frame
+                        cv2.circle(frame, (left_eye.x, left_eye.y), radius=radio, color=hex2bgr(color), thickness=1)
+                        cv2.putText(frame, left_eye.label, (left_eye.x, left_eye.y-10), cv2.FONT_HERSHEY_SCRIPT_SIMPLEX, 0.9, hex2bgr(color), 1)
+                    
+                    if right_eye.x > 0 and right_eye.y  > 0:
+                        # (Opcional) Dibujar un círculo sobre el ojo en el frame
+                        cv2.circle(frame, (right_eye.x, right_eye.y), radius=radio, color=hex2bgr(color), thickness=1)
+                        cv2.putText(frame, right_eye.label, (right_eye.x, right_eye.y-10), cv2.FONT_HERSHEY_SCRIPT_SIMPLEX, 0.9, hex2bgr(color), 1)
+
+                    smile_x = right_eye.x - abs(right_eye.x - left_eye.x)//6 - left_eye.y + right_eye.y
+                    smile_y = nose.y + (nose.y - left_eye.y)*2//3
+                    smile_w = abs(right_eye.x - left_eye.x) *4//3
+                    smile_h = smile_w // 2
+                    
+                    profile = False
+                    if nose.x < right_eye.x or nose.x > left_eye.x:
+                        profile = True
+
+                    if smile_x > 0 and smile_y > 0 and not profile:
+                        color = "#AC8D59"
+                        cv2.rectangle(frame, (smile_x, smile_y), (smile_x + smile_w, smile_y + smile_h), hex2bgr(color), 2)
+                        cv2.putText(frame, 'smile', (smile_x, smile_y-10), cv2.FONT_HERSHEY_SCRIPT_SIMPLEX, 0.9, hex2bgr(color), 1)
+
+                    face_x = right_eye.x - abs(right_eye.x - left_eye.x)*5//6
+                    face_y = right_eye.y - abs(right_eye.y - nose.y)*2
+                    face_w = abs(right_eye.x - left_eye.x)*16//6
+                    face_h = face_w*7//6
+
+                    profile_x = right_eye.x - abs(right_eye.x - left_eye.x)*2//3
+                    profile_y = right_eye.y - abs(right_eye.y - nose.y)*2
+                    profile_w = abs(right_eye.x - left_eye.x) *4
+                    profile_h = profile_w *6//5
+
+                    if profile:
+                        color = "#650EE8"
+                        cv2.rectangle(frame, (profile_x, profile_y), (profile_x + profile_w, profile_y + profile_h), hex2bgr(color), 2)
+                        cv2.putText(frame, 'profile', (profile_x, profile_y-10), cv2.FONT_HERSHEY_SCRIPT_SIMPLEX, 0.9, hex2bgr(color), 1)
+                    else:
+                        color = "#4E75E8"
+                        cv2.rectangle(frame, (face_x, face_y), (face_x + face_w, face_y + face_h), hex2bgr(color), 2)
+                        cv2.putText(frame, 'face', (face_x, face_y-10), cv2.FONT_HERSHEY_SCRIPT_SIMPLEX, 0.9, hex2bgr(color), 1)
+                    break
+
+
+                    
+
+        end = time.time()
+        #print(f"Tiempo de ejecución del pipeline YOLO Pose: {(end - start):.4} segundos")
+
+        # Devolver el frame procesado
+        return frame
+
+class Keypoint:
+    def __init__(self, coords, label):
+        self.x = int(coords[0])
+        self.y = int(coords[1])
+        self.label = label
 
 
 if __name__ == "__main__":
     captura = captura_video(fps=16.0)
     pipelines = Pipelines_ImageProcessing()
-    captura.record(save_video=False, pipe_filtrado=pipelines.faceComponentsCV2)
+    captura.record(save_video=False, pipe_filtrado=pipelines.faceComponentsYOLO)
