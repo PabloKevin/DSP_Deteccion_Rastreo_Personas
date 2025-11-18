@@ -123,7 +123,7 @@ class captura_video:
         out.release()
 
     
-def pipe(frame):
+def pipeEdges(frame):
     """Pipeline de procesamiento de fotogramas."""
     #start = time.time()
     # Convierte a escala de grises
@@ -143,6 +143,37 @@ def pipe(frame):
     #print(f"Tiempo de procesamiento del frame: {(end - start):.2} segundos")
     return processed_frame
 
+def pipeFacesCV2(frame):
+    """Pipeline de procesamiento de fotogramas para detección de rostros usando OpenCV."""
+    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+    
+    #start = time.time()
+    face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_alt2.xml') #haarcascade_frontalface_default
+    faces = face_cascade.detectMultiScale(gray, scaleFactor=1.3, minNeighbors=5, minSize=(30, 30))
+    #end = time.time()
+    #rint(f"Tiempo de detección de ojos: {(end - start):.4} segundos")
+    
+    eyes_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_eye.xml')
+    eyes = eyes_cascade.detectMultiScale(gray, scaleFactor=1.2, minNeighbors=4, minSize=(30, 30)) 
+
+    smile_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_smile.xml')
+    smile = smile_cascade.detectMultiScale(frame, scaleFactor=1.3, minNeighbors=7, minSize=(60, 30), maxSize=(80,40)) 
+    
+    face_x, face_y, face_w, face_h = 0,0,0,0
+    for (x, y, w, h) in faces:
+        face_x, face_y, face_w, face_h = x, y, w, h
+        cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
+
+    #for (x, y, w, h) in eyes:
+    #    cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
+
+    for (x, y, w, h) in smile:
+        if y > face_y+(face_h)*1/2 and y < face_y+face_h*3/4 and x > face_x-face_w*1/2 and x < face_x+face_w*1/2:
+            cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
+            break
+
+    return frame
+
 if __name__ == "__main__":
     captura = captura_video(fps=30.0)
-    captura.record(save_video=True, pipe_filtrado=pipe)
+    captura.record(save_video=False, pipe_filtrado=pipeFacesCV2)
