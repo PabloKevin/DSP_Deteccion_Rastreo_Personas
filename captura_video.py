@@ -20,9 +20,9 @@ def hex2bgr(hex_color):
     return bgr
 
 class captura_video:
-    def __init__(self, fps=60.0, camera=cv2.VideoCapture(0), video_path="DSP_Deteccion_Rastreo_Personas/videos/"):
+    def __init__(self, fps=60.0, video_path="DSP_Deteccion_Rastreo_Personas/videos/"):
         self.fps = fps
-        self.cam = camera
+        self.cam = cv2.VideoCapture(0)
         self.frame_width = int(self.cam.get(cv2.CAP_PROP_FRAME_WIDTH)) # 640 px
         self.frame_height = int(self.cam.get(cv2.CAP_PROP_FRAME_HEIGHT)) # 480 px
         print(f"Resolución de la cámara: {self.frame_width}x{self.frame_height}")

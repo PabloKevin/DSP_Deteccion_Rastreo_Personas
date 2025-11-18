@@ -23,12 +23,17 @@ def apartado34():
     captura.record(save_video=False, pipe_filtrado=pipelines.process)
 
 if __name__ == "__main__":
-    apartado = input("Selecciones apartado a ejecutar: ")
-    if apartado == "32":
-        apartado32()
-    elif apartado == "331":
-        apartado331()
-    elif apartado == "332":
-        apartado332()
-    elif apartado == "34":
-        apartado34()
+    while True:
+        apartado = input("\n\nSelecciones apartado a ejecutar: ")
+        if apartado == "32":
+            apartado32()
+        elif apartado == "331":
+            apartado331()
+        elif apartado == "332":
+            apartado332()
+        elif apartado == "34":
+            apartado34()
+        elif apartado == "exit":
+            break
+        else: 
+            print("Opción no válida. Intente de nuevo. Si desea salir, escriba 'exit'.")
