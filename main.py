@@ -22,6 +22,25 @@ def apartado34():
     pipelines = TrackerPipeline()
     captura.record(save_video=False, pipe_filtrado=pipelines.process)
 
+
+
+def apartado341():
+    pipe2 = TrackerPipeline()
+    pipe1 = Pipelines_ImageProcessing()
+    def deteccionRastreo(frame):
+        frame = pipe1.faceComponentsYOLO(frame)
+        frame = pipe2.process(frame)
+        return frame
+    captura = captura_video(fps=16.0)
+    captura.record(save_video=False, pipe_filtrado=deteccionRastreo)
+
+def apartado342():
+    captura = captura_video(fps=16.0)
+    pipelines = TrackerPipeline()
+    captura.record(save_video=False, pipe_filtrado=pipelines.YOLOtracker)
+    
+    
+
 if __name__ == "__main__":
     while True:
         apartado = input("\n\nSelecciones apartado a ejecutar: ")
@@ -33,7 +52,11 @@ if __name__ == "__main__":
             apartado332()
         elif apartado == "34":
             apartado34()
-        elif apartado == "exit":
+        elif apartado == "341":
+            apartado341()
+        elif apartado == "342":
+            apartado342()
+        elif apartado in ["exit", "e"]:
             break
         else: 
             print("Opción no válida. Intente de nuevo. Si desea salir, escriba 'exit'.")

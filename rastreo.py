@@ -4,6 +4,7 @@ import numpy as np
 import cv2
 import time
 from collections import OrderedDict # Para manejar los objetos
+from collections import defaultdict
 
 # (Aquí iría todo tu código existente: clase captura_video, hex2bgr, Pipelines_ImageProcessing)
 
@@ -12,7 +13,7 @@ from collections import OrderedDict # Para manejar los objetos
 #################################################################
 
 class TrackerPipeline:
-    def __init__(self, max_disappeared=30, base_tolerance_px=50, depth_scale_factor=0.3):
+    def __init__(self, max_disappeared=60, base_tolerance_px=50, depth_scale_factor=0.3):
         """
         Inicializa el rastreador de centroides.
 
@@ -23,7 +24,7 @@ class TrackerPipeline:
             depth_scale_factor (float): Factor para escalar la tolerancia con el tamaño de la caja.
                                        (Ajustar este valor es CRÍTICO).
         """
-        self.yolo_model = YOLO('DSP_Deteccion_Rastreo_Personas/model_weights/yolo11n-pose.pt')
+        self.yolo_model = YOLO('DSP_Deteccion_Rastreo_Personas/model_weights/yolo11n.pt')
         
         # Almacenamiento de objetos activos
         self.objects = OrderedDict()
@@ -45,6 +46,10 @@ class TrackerPipeline:
         
         # Almacén de colores para los IDs
         self.id_colors = {}
+
+
+        # Store the track history
+        self.track_history = defaultdict(lambda: [])
 
     def _get_color_for_id(self, object_id):
         """Genera un color único y consistente para cada ID."""
@@ -204,4 +209,30 @@ class TrackerPipeline:
             y_pos = y1 - 10 if y1 - 10 > 10 else y1 + 20
             cv2.putText(frame, text, (x1, y_pos), cv2.FONT_HERSHEY_SIMPLEX, 0.7, color, 2)
 
+        return frame
+    
+    def YOLOtracker(self, frame):
+        # Run YOLO11 tracking on the frame, persisting tracks between frames
+        result = self.yolo_model.track(frame, persist=True, classes=0, verbose=False)[0]
+
+        # Get the boxes and track IDs
+        if result.boxes and result.boxes.is_track:
+            boxes = result.boxes.xywh.cpu()
+            track_ids = result.boxes.id.int().cpu().tolist()
+
+            # Visualize the result on the frame
+            frame = result.plot()
+
+            # Plot the tracks
+            for box, track_id in zip(boxes, track_ids):
+                x, y, w, h = box
+                track = self.track_history[track_id]
+                track.append((float(x), float(y)))  # x, y center point
+                if len(track) > 30:  # retain 30 tracks for 30 frames
+                    track.pop(0)
+
+                # Draw the tracking lines
+                points = np.hstack(track).astype(np.int32).reshape((-1, 1, 2))
+                cv2.polylines(frame, [points], isClosed=False, color=(230, 230, 230), thickness=10)
+        
         return frame
