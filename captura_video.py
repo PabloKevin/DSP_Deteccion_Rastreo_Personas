@@ -133,7 +133,7 @@ class captura_video:
         path = None
         while True:
             path = self.video_path+"output"+str(i)+".mp4"
-            if os.path.isdir(path):
+            if not os.path.isfile(path):
                 break
             else:
                 i+=1

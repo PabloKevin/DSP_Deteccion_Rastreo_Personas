@@ -25,6 +25,9 @@ class TrackerPipeline:
                                        (Ajustar este valor es CRÍTICO).
         """
         self.yolo_model = YOLO('DSP_Deteccion_Rastreo_Personas/model_weights/yolo11n.pt')
+                # Verificar si está usando GPU o CPU
+        device = self.yolo_model.device
+        print(f"El modelo está corriendo en: {device}")
         
         # Almacenamiento de objetos activos
         self.objects = OrderedDict()

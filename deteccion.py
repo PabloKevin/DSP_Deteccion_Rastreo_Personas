@@ -26,6 +26,8 @@ class Pipelines_ImageProcessing:
         self.smile_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_smile.xml')
 
         self.pose_model = YOLO('DSP_Deteccion_Rastreo_Personas/model_weights/yolo11n-pose.pt')
+        device = self.pose_model.device
+        print(f"El modelo está corriendo en: {device}")
 
     def edges(self, frame):
         """Pipeline de procesamiento de fotogramas para suvizado y detección de bordes."""
